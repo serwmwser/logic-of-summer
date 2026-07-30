@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Логика летнего срыва | Интерактивная повесть</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0f;
+            --text-color: #e0e0e0;
+            --accent-cyan: #00f3ff; /* Для героев */
+            --accent-magenta: #ff0055; /* Для терминов/угроз */
+            --panel-bg: #141419;
+            --font-main: 'Georgia', serif;
+            --font-ui: 'Courier New', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            line-height: 1.8;
+            overflow-x: hidden;
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Main Reading Area */
+        .reader-area {
+            flex: 1;
+            padding: 4rem 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+        }
+
+        h1, h2 {
+            font-family: var(--font-ui);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 2rem;
+            color: var(--accent-cyan);
+            border-bottom: 1px solid #333;
+            padding-bottom: 1rem;
+        }
+
+        p { margin-bottom: 1.5rem; font-size: 1.1rem; }
+
+        /* Interactive Elements */
+        .interactive-word {
+            cursor: pointer;
+            border-bottom: 1px dashed rgba(255,255,255,0.3);
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .hero-link { color: var(--accent-cyan); }
+        .term-link { color: var(--accent-magenta); }
+
+        .interactive-word:hover {
+            background: rgba(0, 243, 255, 0.1);
+            text-shadow: 0 0 8px var(--accent-cyan);
+        }
+
+        /* Side Panel (Dossier) */
+        .info-panel {
+            width: 400px;
+            background: var(--panel-bg);
+            border-left: 1px solid #333;
+            padding: 2rem;
+            position: fixed;
+            right: -400px;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+            font-family: var(--font-ui);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        }
+
+        .info-panel.active { right: 0; }
+
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: 1px solid var(--accent-magenta);
+            color: var(--accent-magenta);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-family: var(--font-ui);
+            text-transform: uppercase;
+        }
+
+        .dossier-header {
+            font-size: 1.5rem;
+            color: var(--accent-cyan);
+            margin-bottom: 1rem;
+            margin-top: 2rem;
+        }
+
+        .dossier-tag {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            background: rgba(255, 0, 85, 0.2);
+            color: var(--accent-magenta);
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--accent-magenta);
+        }
+
+        .dossier-content p { font-size: 0.95rem; line-height: 1.6; color: #aaa; }
+
+        /* Navigation */
+        .chapter-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid #333;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 1rem 2rem;
+            font-family: var(--font-ui);
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-color);
+        }
+
+        /* Mobile Adaptation */
+        @media (max-width: 768px) {
+            .info-panel { width: 100%; right: -100%; }
+            .reader-area { padding: 2rem 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Основная область чтения -->
+    <main class="reader-area" id="reader">
+        <!-- Контент загружается через JS -->
+    </main>
+
+    <!-- Боковая панель с досье -->
+    <aside class="info-panel" id="infoPanel">
+        <button class="close-btn" onclick="closePanel()">Закрыть [X]</button>
+        <div id="panelContent"></div>
+    </aside>
+</div>
+
+<script>
+    // === БАЗА ДАННЫХ КОНТЕНТА ===
+    
+    const characters = {
+        "artem": {
+            name: "АРТЕМ",
+            tag: "ПРОТАГОНИСТ / АНАЛИТИК",
+            desc: "17 лет. Живет в Чертаново. Скептик, склонный к анализу рисков. Видит мир через призму логики и кода. Не доверяет 'бесплатным' сервисам. Мечтает создавать этичные цифровые миры.",
+            stats: "Интеллект: 9/10 | Социальность: 4/10 | Цинизм: 8/10"
+        },
+        "lena": {
+            name: "ЛЕНА",
+            tag: "ЭНТУЗИАСТ / ГЕНЕРАТОР ЭНЕРГИИ",
+            desc: "Лучшая подруга Артема. Оптимистка, легко увлекается новыми трендами. Хочет быть частью элиты, даже если она виртуальная. Ее наивность — главная уязвимость группы.",
+            stats: "Энергия: 10/10 | Критичность: 2/10 | Лояльность: 10/10"
+        },
+        "igor": {
+            name: "ИГОРЬ",
+            tag: "ЖЕРТВА СИСТЕМЫ / ТИХИЙ ИСПОЛНИТЕЛЬ",
+            desc: "Одноклассник, 'серая мышь'. Осторожен до паранойи, но финансовое давление заставляет его рисковать. Стал первым, кто попался на крючок шантажа. Его слабость обнажила методы NeoRest.",
+            stats: "Осторожность: 7/10 | Уязвимость: 9/10 | Стресс: MAX"
+        },
+        "marina": {
+            name: "МАРИНА",
+            tag: "ЮРИСТ / РАЦИОНАЛИСТ",
+            desc: "Старшекурсница юрфака МГУ. Прагматик, видит суть договоров. Контрастирует с эмоциональностью Лены. Вносит юридическую точность в хаос подросткового бунта.",
+            stats: "Логика: 10/10 | Эмоции: 3/10 | Компетенция: 9/10"
+        },
+        "kirill": {
+            name: "КИРИЛЛ",
+            tag: "ХАКЕР / ИНФОРМАТОР ИЗ ТЕНИ",
+            desc: "Работал на теневые структуры. Говорит фактами, лишен эмоций. Раскрывает истинную цель проекта NeoRest. Появляется только когда ситуация критическая.",
+            stats: "Навыки: 10/10 | Социальность: 1/10 | Загадочность: 10/10"
+        },
+        "oleg": {
+            name: "ОЛЕГ",
+            tag: "БЛОГЕР / ХИЩНИК КОНТЕНТА",
+            desc: "Циничный создатель контента. Превращает чужие эмоции в трафик. Символ коммодификации чувств в 2026 году. Для него люди — источники лайков.",
+            stats: "Харизма: 8/10 | Эмпатия: 0/10 | Нарциссизм: 10/10"
+        }
+    };
+
+    const terms = {
+        "chillcoin": {
+            name: "ChillCoin",
+            tag: "ПРИЛОЖЕНИЕ / ЛОВУШКА",
+            desc: "Приложение, платящее за сон. На поверхности — майнинг, внутри — сбор биометрии и эмоционального фона. Инструмент социального инжиниринга, замаскированный под wellness-сервис."
+        },
+        "neorest": {
+            name: "NeoRest",
+            tag: "КОРПОРАЦИЯ / АНТАГОНИСТ",
+            desc: "Компания-разработчик ChillCoin. Зарегистрирована на Кипре. Фронт для сбора поведенческих паттернов молодежи. Настоящая цель — создание алгоритмов управления массами."
+        },
+        "neonbeach": {
+            name: "Neon Beach",
+            tag: "СОБЫТИЕ / ПОЛИГОН",
+            desc: "Закрытая вечеринка на крыше Федерации. Вход по NFT. Не просто тусовка, а полигон для тестирования социальных реакций и демонстративного потребления."
+        }
+    };
+
+    const chapters = [
+        {
+            title: "ГЛАВА 1. ИЛЛЮЗИЯ ЛЕГКОГО ДОХОДА",
+            text: `Август 2026 года выдался аномально жарким для Москвы. Воздух стоял неподвижно, напоминая густой прозрачный кисель. <span class="interactive-word hero-link" data-id="artem">Артем</span> лежал на балконе своей квартиры в Чертаново, наблюдая за игрой света на стеклах соседних высоток. Ему было семнадцать — возраст, когда максимализм еще не успел перерасти в цинизм.
+
+В дверь позвонили. На пороге стояла <span class="interactive-word hero-link" data-id="lena">Лена</span>. Она ворвалась в квартиру с той стремительностью, которая свойственна людям, абсолютно уверенным в своей правоте. В руках она сжимала планшет, экран которого пульсировал мягким зеленым светом.
+
+— Артем, посмотри, — сказала она. — Это <span class="interactive-word term-link" data-id="chillcoin">ChillCoin</span>. Приложение, которое платит за сон.
+
+В этот момент в комнату вошел <span class="interactive-word hero-link" data-id="igor">Игорь</span>. Одноклассник Артема, которого в школе считали «серой мышью». Он молча подошел к столу и сказал тихо:
+
+— Я вывел вчера пять тысяч рублей. Просто спал.`
+        },
+        {
+            title: "ГЛАВА 2. АНАТОМИЯ ЦИФРОВОГО ОБМАНА",
+            text: `Прошло три дня. <span class="interactive-word hero-link" data-id="artem">Артем</span> практически не спал, изучая код <span class="interactive-word term-link" data-id="chillcoin">ChillCoin</span>. Поверхностный анализ показывал стандартную схему майнинга, но глубже скрывался сложный биометрический сканер.
+
+В парк пришел <span class="interactive-word hero-link" data-id="dimon">Димон</span>. Он сидел на скамейке и демонстративно листал ленту новостей.
+
+— Вы слышали про <span class="interactive-word term-link" data-id="neonbeach">Neon Beach</span>? — бросил он. — Закрытая вечеринка на крыше башни «Федерация». Вход только по NFT.
+
+В этот момент к ним подошла <span class="interactive-word hero-link" data-id="marina">Марина</span>, старшекурсница юридического факультета. Она выглядела усталой, но собранной.
+
+— Ребята, — сказала она холодно. — Я изучила пользовательское соглашение <span class="interactive-word term-link" data-id="chillcoin">ChillCoin</span>. Вы продаете не сон. Вы продаете свою личность.`
+        },
+        {
+            title: "ГЛАВА 3. СОЦИАЛЬНАЯ ИНЖЕНЕРИЯ",
+            text: `Вечеринка <span class="interactive-word term-link" data-id="neonbeach">Neon Beach</span> оказалась полигоном для социального эксперимента. <span class="interactive-word hero-link" data-id="artem">Артем</span> наблюдал за толпой с крыши соседнего здания. Люди вели себя неестественно, демонстрируя счастье для камер дронов.
+
+К нему подошел <span class="interactive-word hero-link" data-id="kirill">Кирилл</span>, известный хакер-энтузиаст.
+
+— Ты копнешь слишком глубоко, — сказал он монотонно. — <span class="interactive-word term-link" data-id="neorest">NeoRest</span> — это фронт. Настоящие владельцы интересуются паттернами поведения молодежи. Они хотят знать, чем можно управлять.
+
+Внизу танцевала <span class="interactive-word hero-link" data-id="lena">Лена</span>. Артем понимал: этот смех уже продан.`
+        }
+    ];
+
+    // === ЛОГИКА ПРИЛОЖЕНИЯ ===
+
+    let currentChapter = 0;
+    const readerEl = document.getElementById('reader');
+    const panelEl = document.getElementById('infoPanel');
+    const panelContentEl = document.getElementById('panelContent');
+
+    function renderChapter(index) {
+        const chapter = chapters[index];
+        readerEl.innerHTML = `
+            <h2>${chapter.title}</h2>
+            <div class="chapter-text">${chapter.text}</div>
+            <div class="chapter-nav">
+                <button class="nav-btn" onclick="prevChapter()" ${index === 0 ? 'disabled style="opacity:0.3"' : ''}>← Назад</button>
+                <button class="nav-btn" onclick="nextChapter()" ${index === chapters.length - 1 ? 'disabled style="opacity:0.3"' : ''}>Вперед →</button>
+            </div>
+        `;
+        
+        // Навешиваем обработчики на интерактивные слова
+        document.querySelectorAll('.interactive-word').forEach(el => {
+            el.addEventListener('click', () => openInfo(el.dataset.id, el.classList.contains('hero-link') ? 'hero' : 'term'));
+        });
+        
+        window.scrollTo(0, 0);
+    }
+
+    function openInfo(id, type) {
+        const data = type === 'hero' ? characters[id] : terms[id];
+        if (!data) return;
+
+        panelContentEl.innerHTML = `
+            <div class="dossier-tag">${data.tag}</div>
+            <h3 class="dossier-header">${data.name}</h3>
+            <div class="dossier-content">
+                <p>${data.desc}</p>
+                ${data.stats ? `<p style="margin-top:1rem; color:var(--accent-cyan); font-size:0.8rem;">${data.stats}</p>` : ''}
+            </div>
+        `;
+        
+        panelEl.classList.add('active');
+    }
+
+    function closePanel() {
+        panelEl.classList.remove('active');
+    }
+
+    function nextChapter() {
+        if (currentChapter < chapters.length - 1) {
+            currentChapter++;
+            renderChapter(currentChapter);
+        }
+    }
+
+    function prevChapter() {
+        if (currentChapter > 0) {
+            currentChapter--;
+            renderChapter(currentChapter);
+        }
+    }
+
+    // Инициализация
+    renderChapter(0);
+
+    // Закрытие панели по клику вне её
+    document.addEventListener('click', (e) => {
+        if (!panelEl.contains(e.target) && !e.target.classList.contains('interactive-word')) {
+            closePanel();
+        }
+    });
+</script>
+
+</body>
+</html>
